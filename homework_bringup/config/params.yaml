@@ -1,0 +1,20 @@
+main_node:
+  ros__parameters:
+    difficulty: "中杯"
+    
+    difficulties:
+      中杯:
+        process_noise_pos: 1.0e-5
+        process_noise_vel: 1.0e-4
+        process_noise_acc: 1.0e-3
+        measurement_noise: 1.0e-3
+      大杯:
+        process_noise_pos: 1.0e-4
+        process_noise_vel: 1.0e-3
+        process_noise_acc: 1.0e-2
+        measurement_noise: 1.0e-4
+      超大杯:
+        process_noise_pos: 1.0e-3
+        process_noise_vel: 1.0e-2
+        process_noise_acc: 1.0e-1
+        measurement_noise: 1.0e-1

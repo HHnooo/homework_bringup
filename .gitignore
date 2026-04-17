@@ -1,0 +1,17 @@
+# 编译文件
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# 系统文件
+*.swp
+*~
+.DS_Store
