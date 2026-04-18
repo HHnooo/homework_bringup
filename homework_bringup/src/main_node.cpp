@@ -143,44 +143,47 @@ void MainNode::update_color_targets(const cv::Mat &frame,
 }
     std::vector<bool> matched_detections(detections.size(), false);
     for (int i = 0; i < targets.size(); i++) {
-    cv::Point2f pred = targets[i]->predict(current_time);
-    double min_dist = 100.0;
-    int best_j = -1;
-    for (int j = 0; j < detections.size(); j++) {
-        if (matched_detections[j]) continue;
-        double dist = cv::norm(pred - detections[j]);
-        if (dist < min_dist) {
-            min_dist = dist;
-            best_j = j;
+        cv::Point2f pred = targets[i]->predict(current_time);
+        double min_dist = 100.0;
+        int best_j = -1;
+        for (int j = 0; j < detections.size(); j++) {
+            if (matched_detections[j]) continue;
+            double dist = cv::norm(pred - detections[j]);
+            if (dist < min_dist) {
+                min_dist = dist;
+                best_j = j;
+            }
         }
-    }
-    if (best_j >= 0) {
-        matched_detections[best_j] = true;
-        targets[i]->correct(detections[best_j], current_time); 
-        targets[i]->missed_frames = 0;
-    } else {
-        targets[i]->missed_frames++;
+        if (best_j >= 0) {
+            matched_detections[best_j] = true;
+            targets[i]->correct(detections[best_j], current_time); 
+            targets[i]->missed_frames = 0;
+        } 
+        else{
+            targets[i]->missed_frames++;
 
-        if (targets[i]->missed_frames<=5) {
-            cv::Point2f virtual_meas = targets[i]->pos;
-            targets[i]->correct(virtual_meas, current_time);
-        }
-        if (targets[i]->missed_frames >5) {
-            targets[i]->is_alive = false;
+            if (targets[i]->missed_frames<=5) {
+                cv::Point2f virtual_meas = targets[i]->pos;
+                targets[i]->correct(virtual_meas, current_time);
+            }
+            if (targets[i]->missed_frames >5) {
+                targets[i]->is_alive = false;
+            }
         }
     }
-}
-for (int j = 0; j < detections.size(); j++) {
-    if (!matched_detections[j]) {
-        auto new_target = std::make_shared<ArmorTarget>(
+    for (int j = 0; j < detections.size(); j++) {
+        if (matched_detections[j]==false) {
+            auto new_target = std::make_shared<ArmorTarget>(
             next_id++, detections[j], current_time,
             process_noise_pos_, process_noise_vel_, process_noise_acc_, measurement_noise_);
-        targets.push_back(new_target);
+            targets.push_back(new_target);
+        }
     }
-}
-targets.erase(std::remove_if(targets.begin(), targets.end(),
-                             [](const std::shared_ptr<ArmorTarget> &t) { return !t->is_alive; }),
-              targets.end());
+    for (auto it = targets.begin(); it != targets.end(); ) {
+        if ((*it)->is_alive==false) it = targets.erase(it);
+        else ++it;
+        
+    }
 }
 
 //主循环
@@ -266,19 +269,17 @@ void MainNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
         }
     }
 }
-//开火检测
-
+   //开火检测
    bool MainNode::can_fire(const cv::Point2f& hit_point, double current_time, double time_hit) {
     cv::Point2f direction = hit_point - launcher_pos_;
     double total_dist = cv::norm(direction);
-    for (int s = 0; s <= 30; ++s) {
+    for (int s = 0; s <= 30; s++) {
         double t = (static_cast<double>(s) / 30) * time_hit;
         cv::Point2f bullet_pos = launcher_pos_ + direction * (t / time_hit);
         for (auto& own : own_targets_) {
             if (!own->is_alive) continue;
             cv::Point2f pred_pos = own->pos + own->vel * t + 0.5f * own->acc * t * t;
-            const float half_w = 50.0f;
-            const float half_h = 30.0f;
+
             if (bullet_pos.x >= pred_pos.x - 50 && bullet_pos.x <= pred_pos.x + 50 &&
                 bullet_pos.y >= pred_pos.y - 30 && bullet_pos.y <= pred_pos.y + 30) {
                 return false;
